@@ -7,7 +7,6 @@
 //
 
 #import <UIKit/UIKit.h>
-#import "PHRefreshTriggerView.h"
 
 typedef enum {
     PHRefreshIdle = 0,
@@ -15,22 +14,26 @@ typedef enum {
     PHRefreshLoading
 } PHRefreshState;
 
-@interface PHRefreshGestureRecognizer : UIGestureRecognizer {
-    PHRefreshState          _refreshState;
-    PHRefreshTriggerView    *_triggerView;
+@protocol PHRefreshTriggerView;
 
+@interface PHRefreshGestureRecognizer : UIGestureRecognizer {
+    PHRefreshState _refreshState;
+    UIView<PHRefreshTriggerView> *_triggerView;
+    
     struct {
         BOOL isBoundToScrollView:1;
     } _triggerFlags;
 }
 
-@property (nonatomic, assign) PHRefreshState refreshState; // You can force a state by modifying this value.
-@property (nonatomic, readonly) UIScrollView *scrollView;
+@property (nonatomic, assign) PHRefreshState refreshState;
+@property (nonatomic, strong, readonly) UIScrollView *scrollView;
 
-@property (nonatomic, readonly, retain) PHRefreshTriggerView *triggerView; 
+@property (nonatomic, strong) UIView<PHRefreshTriggerView> *triggerView;
 
 @end
 
 @interface UIScrollView (PHRefreshGestureRecognizer)
-- (PHRefreshGestureRecognizer *)refreshGestureRecognizer; //Will return nil if there's no gesture attached to that scrollview
+
+- (PHRefreshGestureRecognizer *)refreshGestureRecognizer;
+
 @end
