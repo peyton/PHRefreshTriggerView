@@ -9,23 +9,23 @@
 #import "PHRefreshTriggerView.h"
 #import <QuartzCore/QuartzCore.h>
 
-NSString * const PHSpinAnimationKey = @"PHSpinAnimationKey";
-NSString * const PHResetAnimationKey = @"PHResetAnimationKey";
-
 @interface PHRefreshTriggerView ()
 
 @property (nonatomic, assign, getter = isLoading) BOOL loading;
 @property (nonatomic, assign, getter = isTriggered) BOOL triggered;
 
-- (CAAnimation *)_createRotationAnimationWithAngle:(CGFloat)angle;
-
 @end
 
 @implementation PHRefreshTriggerView
-@synthesize titleLabel = _titleLabel;
 @synthesize activityView = _activityView;
 @synthesize arrowView = _arrowView;
+@synthesize titleLabel = _titleLabel;
 
+@synthesize loadingText = _loadingText;
+@synthesize pullToRefreshText = _pullToRefreshText;
+@synthesize releaseText = _releaseText;
+
+@synthesize arrowFadeAnimationDuration = _arrowFadeAnimationDuration;
 @synthesize arrowSpinAnimationDuration = _arrowSpinAnimationDuration;
 @synthesize contentInsetAnimationDuration = _contentInsetAnimationDuration;
 
@@ -58,8 +58,16 @@ NSString * const PHResetAnimationKey = @"PHResetAnimationKey";
     [self.titleLabel addObserver:self forKeyPath:@"text" options:0 context:NULL];
     
     // Set defaults
+    self.loadingText = NSLocalizedStringFromTable(@"Loading\u2026", @"PHRefreshTriggerView", @"Loading table view contents");
+    self.pullToRefreshText = NSLocalizedStringFromTable(@"Pull to refresh\u2026", @"PHRefreshTriggerView", @"User may pull table view down to refresh");
+    self.releaseText = NSLocalizedStringFromTable(@"Release\u2026", @"PHRefreshTriggerView", @"User pulled table view down past threshold");
+    
+    self.arrowFadeAnimationDuration = 0.18;
     self.arrowSpinAnimationDuration = 0.18;
     self.contentInsetAnimationDuration = 0.3;
+    
+    self.loading = NO;
+    self.triggered = NO;
     [self transitionToRefreshState:PHRefreshIdle];
     
     return self;
@@ -67,8 +75,13 @@ NSString * const PHResetAnimationKey = @"PHResetAnimationKey";
 
 - (void)dealloc {
     [self.titleLabel removeObserver:self forKeyPath:@"text"];
+    self.activityView = nil;
     self.arrowView  = nil;
     self.titleLabel = nil;
+    
+    self.loadingText = nil;
+    self.pullToRefreshText = nil;
+    self.releaseText = nil;
 }
 
 #pragma mark - Subview methods
@@ -112,13 +125,18 @@ NSString * const PHResetAnimationKey = @"PHResetAnimationKey";
 {
     switch (state) {
         case PHRefreshTriggered:
-            [self.arrowView.layer addAnimation:[self _createRotationAnimationWithAngle:M_PI] forKey:PHSpinAnimationKey];
-            self.titleLabel.text = NSLocalizedStringFromTable(@"Release\u2026", @"PHRefreshTriggerView", @"User pulled table view down past threshold");                
-            
+        {
+            [UIView animateWithDuration:self.arrowSpinAnimationDuration delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+                self.arrowView.transform = CGAffineTransformMakeRotation(M_PI);
+            } completion:NULL];
+
+            self.titleLabel.text = self.releaseText;
             self.triggered = YES;
             
             break;
+        }
         case PHRefreshIdle:
+        {
             if (self.isLoading)
             {
                 [UIView animateWithDuration:self.contentInsetAnimationDuration animations:^{
@@ -127,32 +145,42 @@ NSString * const PHResetAnimationKey = @"PHResetAnimationKey";
                 }];
                 
                 [self.activityView stopAnimating];
-                self.arrowView.hidden = NO;
-                [self.arrowView.layer removeAllAnimations];
+                self.arrowView.transform = CGAffineTransformIdentity;
+                [UIView animateWithDuration:self.arrowFadeAnimationDuration delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+                    self.arrowView.alpha = 1.0f;
+                } completion:NULL];
                 
                 self.loading = NO;
             } else if (self.isTriggered)
             {
-                [self.arrowView.layer addAnimation:[self _createRotationAnimationWithAngle:0.0f] forKey:PHResetAnimationKey];    
+                [UIView animateWithDuration:self.arrowSpinAnimationDuration delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+                    self.arrowView.transform = CGAffineTransformMakeRotation(0.0f);
+                } completion:NULL];   
                 
                 self.triggered = NO;
             }
             
-            self.titleLabel.text = NSLocalizedStringFromTable(@"Pull to refresh\u2026", @"PHRefreshTriggerView", @"User may pull table view down to refresh");
+            self.titleLabel.text = self.pullToRefreshText;
             break;
+        }
         case PHRefreshLoading:
+        {
             [UIView animateWithDuration:self.contentInsetAnimationDuration animations:^{
                 UIScrollView *scrollView = (UIScrollView *)self.superview;
                 scrollView.contentInset = UIEdgeInsetsMake(CGRectGetHeight(self.bounds), scrollView.contentInset.left, scrollView.contentInset.bottom, scrollView.contentInset.right);
             }];
             
             [self.activityView startAnimating];
-            self.arrowView.hidden = YES;
-            self.titleLabel.text = NSLocalizedStringFromTable(@"Loading\u2026", @"PHRefreshTriggerView", @"Loading table view contents");
+            [UIView animateWithDuration:self.arrowFadeAnimationDuration delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+                self.arrowView.alpha = 0.0f;
+            } completion:NULL];
+            
+            self.titleLabel.text = self.loadingText;
             
             self.loading = YES;
             
             break;
+        }
     }
 }
 
@@ -162,18 +190,6 @@ NSString * const PHResetAnimationKey = @"PHResetAnimationKey";
 {
     if (object == self.titleLabel && [keyPath isEqualToString:@"text"])
         [self setNeedsLayout];
-}
-
-#pragma mark - FOR PRIVATE EYES ONLY
-
-- (CAAnimation *)_createRotationAnimationWithAngle:(CGFloat)angle;
-{
-    CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
-    animation.duration = self.arrowSpinAnimationDuration;
-    animation.toValue = [NSNumber numberWithFloat:angle];
-    animation.fillMode = kCAFillModeForwards;
-    animation.removedOnCompletion = NO;
-    return animation;
 }
 
 @end
