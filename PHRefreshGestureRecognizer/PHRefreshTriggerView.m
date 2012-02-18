@@ -42,20 +42,14 @@
     
     // Initialize activityView
     self.activityView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
-    [self addSubview:self.activityView];
     
     // Initialize arrowView
     self.arrowView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"blackArrow"]];
-    [self addSubview:self.arrowView];
     
     // Initialize titleLabel
     self.titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.titleLabel.textAlignment = UITextAlignmentCenter;
     self.titleLabel.backgroundColor = [UIColor clearColor];
-    [self addSubview:self.titleLabel];
-
-    // Set up KVO
-    [self.titleLabel addObserver:self forKeyPath:@"text" options:0 context:NULL];
     
     // Set defaults
     self.loadingText = NSLocalizedStringFromTable(@"Loading\u2026", @"PHRefreshTriggerView", @"Loading table view contents");
@@ -68,13 +62,11 @@
     
     self.loading = NO;
     self.triggered = NO;
-    [self transitionToRefreshState:PHRefreshIdle];
     
     return self;
 }
 
 - (void)dealloc {
-    [self.titleLabel removeObserver:self forKeyPath:@"text"];
     self.activityView = nil;
     self.arrowView  = nil;
     self.titleLabel = nil;
@@ -85,6 +77,11 @@
 }
 
 #pragma mark - Subview methods
+
+- (void)didAddSubview:(UIView *)subview;
+{
+    [self setNeedsLayout];
+}
 
 - (void)layoutSubviews;
 {
@@ -105,6 +102,38 @@
 - (CGSize)sizeThatFits:(CGSize)size;
 {
     return CGSizeMake(size.width, 64.0f);
+}
+
+#pragma mark - Getters and setters
+
+- (void)setActivityView:(UIActivityIndicatorView *)activityView;
+{
+    if (activityView == self.activityView)
+        return;
+    
+    [self.activityView removeFromSuperview];
+    _activityView = activityView;
+    [self addSubview:self.activityView];
+}
+
+- (void)setArrowView:(UIImageView *)arrowView;
+{
+    if (arrowView == self.arrowView)
+        return;
+    
+    [self.arrowView removeFromSuperview];
+    _arrowView = arrowView;
+    [self addSubview:self.arrowView];
+}
+
+- (void)setTitleLabel:(UILabel *)titleLabel;
+{
+    if (titleLabel == self.titleLabel)
+        return;
+
+    [self.titleLabel removeFromSuperview];
+    _titleLabel = titleLabel;
+    [self addSubview:self.titleLabel];
 }
 
 #pragma mark - PHRefreshTriggerView methods
@@ -137,18 +166,21 @@
         }
         case PHRefreshIdle:
         {
+            void (^updateTitle)(void) = ^{
+                self.titleLabel.text = self.pullToRefreshText;
+            };
             if (self.isLoading)
             {
-                [UIView animateWithDuration:self.contentInsetAnimationDuration animations:^{
+                [UIView animateWithDuration:self.contentInsetAnimationDuration delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
                     UIScrollView *scrollView = (UIScrollView *)self.superview;
                     scrollView.contentInset = UIEdgeInsetsMake(0.0f, scrollView.contentInset.left, scrollView.contentInset.bottom, scrollView.contentInset.right);
-                }];
-                
-                [self.activityView stopAnimating];
-                self.arrowView.transform = CGAffineTransformIdentity;
-                [UIView animateWithDuration:self.arrowFadeAnimationDuration delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+                } completion:^(BOOL finished) {
+                    [self.activityView stopAnimating];
+                    self.arrowView.transform = CGAffineTransformIdentity;
                     self.arrowView.alpha = 1.0f;
-                } completion:NULL];
+                    
+                    updateTitle();
+                }];
                 
                 self.loading = NO;
             } else if (self.isTriggered)
@@ -157,10 +189,13 @@
                     self.arrowView.transform = CGAffineTransformMakeRotation(0.0f);
                 } completion:NULL];   
                 
+                updateTitle();
+                
                 self.triggered = NO;
+            } else {
+                updateTitle();
             }
             
-            self.titleLabel.text = self.pullToRefreshText;
             break;
         }
         case PHRefreshLoading:
@@ -182,14 +217,8 @@
             break;
         }
     }
-}
-
-#pragma mark - KVO methods
-
-- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context;
-{
-    if (object == self.titleLabel && [keyPath isEqualToString:@"text"])
-        [self setNeedsLayout];
+    
+    [self setNeedsLayout];
 }
 
 @end

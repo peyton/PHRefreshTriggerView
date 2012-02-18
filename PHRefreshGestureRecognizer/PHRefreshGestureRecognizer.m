@@ -23,7 +23,11 @@ static NSString * const PHRefreshViewKeyPath = @"view";
 {    
     if (!(self = [super initWithTarget:target action:action]))
         return nil;
-        
+    
+    // Create trigger view
+    self.triggerView = [[PHRefreshTriggerView alloc] initWithFrame:CGRectZero];
+    
+    // Configure KVO
     [self addObserver:self forKeyPath:PHRefreshViewKeyPath options:NSKeyValueObservingOptionNew context:NULL];
         
     return self;
@@ -42,10 +46,8 @@ static NSString * const PHRefreshViewKeyPath = @"view";
     if (refreshState == self.refreshState)
         return;
     
-    [self willChangeValueForKey:@"refreshState"];
     _refreshState = refreshState;
     [self.triggerView transitionToRefreshState:refreshState];
-    [self didChangeValueForKey:@"refreshState"];
 }
 
 - (UIScrollView *)scrollView;
@@ -53,12 +55,14 @@ static NSString * const PHRefreshViewKeyPath = @"view";
     return (UIScrollView *)self.view;
 }
 
-- (UIView *)triggerView;
+- (void)setTriggerView:(UIView<PHRefreshTriggerView> *)triggerView;
 {
-    if (_triggerView == nil)
-        self.triggerView = [[PHRefreshTriggerView alloc] initWithFrame:CGRectZero];
+    if (triggerView == self.triggerView)
+        return;
     
-    return _triggerView;
+    [_triggerView removeFromSuperview];
+    _triggerView = triggerView;
+    [_triggerView transitionToRefreshState:self.refreshState];
 }
 
 #pragma mark - KVO methods
