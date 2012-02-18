@@ -9,6 +9,11 @@
 #import "PHRefreshTriggerView.h"
 #import <QuartzCore/QuartzCore.h>
 
+// KVO key paths
+static NSString * const PHRefreshTriggerViewActivityViewKeyPath = @"activityView";
+static NSString * const PHRefreshTriggerViewArrowViewKeyPath = @"arrowView";
+static NSString * const PHRefreshTriggerViewTitleLabelKeyPath = @"titleLabel";
+
 @interface PHRefreshTriggerView ()
 
 @property (nonatomic, assign, getter = isLoading) BOOL loading;
@@ -39,6 +44,11 @@
     
     // Configure view
     self.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    
+    // Initialize KVO
+    [self addObserver:self forKeyPath:PHRefreshTriggerViewActivityViewKeyPath options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld context:NULL];
+    [self addObserver:self forKeyPath:PHRefreshTriggerViewArrowViewKeyPath options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld context:NULL];
+    [self addObserver:self forKeyPath:PHRefreshTriggerViewTitleLabelKeyPath options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld context:NULL];
     
     // Initialize activityView
     self.activityView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
@@ -71,6 +81,10 @@
     self.arrowView  = nil;
     self.titleLabel = nil;
     
+    [self removeObserver:self forKeyPath:PHRefreshTriggerViewActivityViewKeyPath];
+    [self removeObserver:self forKeyPath:PHRefreshTriggerViewArrowViewKeyPath];
+    [self removeObserver:self forKeyPath:PHRefreshTriggerViewTitleLabelKeyPath];
+    
     self.loadingText = nil;
     self.pullToRefreshText = nil;
     self.releaseText = nil;
@@ -102,38 +116,6 @@
 - (CGSize)sizeThatFits:(CGSize)size;
 {
     return CGSizeMake(size.width, 64.0f);
-}
-
-#pragma mark - Getters and setters
-
-- (void)setActivityView:(UIActivityIndicatorView *)activityView;
-{
-    if (activityView == self.activityView)
-        return;
-    
-    [self.activityView removeFromSuperview];
-    _activityView = activityView;
-    [self addSubview:self.activityView];
-}
-
-- (void)setArrowView:(UIImageView *)arrowView;
-{
-    if (arrowView == self.arrowView)
-        return;
-    
-    [self.arrowView removeFromSuperview];
-    _arrowView = arrowView;
-    [self addSubview:self.arrowView];
-}
-
-- (void)setTitleLabel:(UILabel *)titleLabel;
-{
-    if (titleLabel == self.titleLabel)
-        return;
-
-    [self.titleLabel removeFromSuperview];
-    _titleLabel = titleLabel;
-    [self addSubview:self.titleLabel];
 }
 
 #pragma mark - PHRefreshTriggerView methods
@@ -219,6 +201,25 @@
     }
     
     [self setNeedsLayout];
+}
+
+#pragma mark - KVO methods
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context;
+{
+    id oldObject = [change objectForKey:NSKeyValueChangeOldKey];
+    id newObject = [change objectForKey:NSKeyValueChangeNewKey];
+    
+    // Swap subviews
+    if ([keyPath isEqualToString:PHRefreshTriggerViewActivityViewKeyPath] ||
+        [keyPath isEqualToString:PHRefreshTriggerViewArrowViewKeyPath] ||
+        [keyPath isEqualToString:PHRefreshTriggerViewTitleLabelKeyPath])
+    {
+        if (oldObject != [NSNull null])
+            [(UIView *)oldObject removeFromSuperview];
+        if (newObject != [NSNull null])
+            [self addSubview:(UIView *)newObject];
+    }
 }
 
 @end
