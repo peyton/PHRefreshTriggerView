@@ -27,9 +27,9 @@
     NSString *_pullToRefreshText;
     NSString *_releaseText;
     
-    CFTimeInterval _arrowFadeAnimationDuration;
-    CFTimeInterval _arrowSpinAnimationDuration;
-    CFTimeInterval _contentInsetAnimationDuration;
+    NSTimeInterval _arrowFadeAnimationDuration;
+    NSTimeInterval _arrowSpinAnimationDuration;
+    NSTimeInterval _contentInsetAnimationDuration;
     
     BOOL _loading;
     BOOL _triggered;
@@ -43,9 +43,9 @@
 @property (nonatomic, strong) NSString *pullToRefreshText;
 @property (nonatomic, strong) NSString *releaseText;
 
-@property (nonatomic, assign) CFTimeInterval arrowFadeAnimationDuration;
-@property (nonatomic, assign) CFTimeInterval arrowSpinAnimationDuration;
-@property (nonatomic, assign) CFTimeInterval contentInsetAnimationDuration;
+@property (nonatomic, assign) NSTimeInterval arrowFadeAnimationDuration;
+@property (nonatomic, assign) NSTimeInterval arrowSpinAnimationDuration;
+@property (nonatomic, assign) NSTimeInterval contentInsetAnimationDuration;
 
 @property (nonatomic, assign, readonly, getter = isLoading) BOOL loading;
 @property (nonatomic, assign, readonly, getter = isTriggered) BOOL triggered;
